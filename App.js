@@ -12,6 +12,7 @@ export default function App() {
   const [showText, setShowText] = useState(true); // State to control text rendering
   const [highlightedIndex, setHighlightedIndex] = useState(0); // Track which sentence is highlighted
   const [sentencesAnimated, setSentencesAnimated] = useState(false); // Track if sentences animation is triggered
+  const [sentenceReversed, setReverseSentence] = useState(false); // Store the reverse state
   const sentence = "  Over half of the population suffers from the diet related diseases...  ";
   const sentences = [
     "Get rid of acne",
@@ -25,6 +26,7 @@ export default function App() {
 
   // Store animated values for each sentence
   const sentenceColors = useRef(sentences.map(() => new Animated.Value(0))); // 0 for grey, 1 for white
+  const sentenceOpacities = useRef(sentences.map(() => new Animated.Value(1))); // Opacities for each sentence
 
   // Function to trigger haptic feedback continuously
   const triggerHapticFeedback = () => {
@@ -87,11 +89,10 @@ export default function App() {
       let sentenceIndex = 0;
       const interval = setInterval(() => {
         if (sentenceIndex < sentences.length) {
-          // Reset the color of the previous sentence to grey
           if (sentenceIndex > 0) {
             Animated.timing(sentenceColors.current[sentenceIndex - 1], {
               toValue: 0,
-              duration:300 , // Short duration for resetting the previous sentence
+              duration: 300, // Short duration for resetting the previous sentence
               useNativeDriver: false,
             }).start();
           }
@@ -102,16 +103,45 @@ export default function App() {
             duration: 300, // 3 seconds for each sentence to highlight
             useNativeDriver: false,
           }).start();
-
+          triggerHapticFeedback();
           setHighlightedIndex(sentenceIndex);
           sentenceIndex++;
         } else {
           clearInterval(interval);
-          setSentencesAnimated(false); // Stop the animation after all sentences are done
+          setSentencesAnimated(false);
+          // Set reverse sentence state to true after animation
+          setReverseSentence(true);
+
+          // After 1 second, reset reverse sentence state
+          setTimeout(() => {
+            setReverseSentence(false);
+          }, 1000); // 1 second delay
         }
-      }, 300); // Transition every 3 seconds
+      }, 300);
     }
   }, [sentencesAnimated]);
+
+  useEffect(() => {
+    if (sentenceReversed) {
+      // Animate sentences disappearing from bottom to top
+      let sentenceIndex = sentences.length - 1;
+      const interval = setInterval(() => {
+        if (sentenceIndex >= 0) {
+          // Fade out the sentence one by one
+          Animated.timing(sentenceOpacities.current[sentenceIndex], {
+            toValue: 0,
+            duration: 100,
+            useNativeDriver: true,
+          }).start();
+
+          sentenceIndex--;
+          triggerHapticFeedback();
+        } else {
+          clearInterval(interval);
+        }
+      }, 100);
+    }
+  }, [sentenceReversed]);
 
   if (!fontLoaded) {
     return <Text>Loading...</Text>;
@@ -134,7 +164,7 @@ export default function App() {
           </View>
         )}
 
-        {sentencesAnimated && (
+        {sentencesAnimated && !sentenceReversed && (
           <View style={styles.sentencesContainer}>
             {sentences.map((item, index) => {
               return (
@@ -147,6 +177,27 @@ export default function App() {
                           inputRange: [0, 1],
                           outputRange: ['grey', 'white'],
                         }),
+                      },
+                    ]}
+                  >
+                    {item}
+                  </Animated.Text>
+                </Animated.View>
+              );
+            })}
+          </View>
+        )}
+
+        {sentenceReversed && (
+          <View style={styles.sentencesContainer}>
+            {sentences.slice().reverse().map((item, index) => {
+              return (
+                <Animated.View key={index}>
+                  <Animated.Text
+                    style={[
+                      styles.sentencesText,
+                      {
+                        opacity: sentenceOpacities.current[index], // Apply opacity animation
                       },
                     ]}
                   >

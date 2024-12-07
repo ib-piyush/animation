@@ -4,15 +4,18 @@ import * as Font from 'expo-font';
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import ReverseAnimation from './ReverseAnimation';
 
 export default function App() {
   const [fontLoaded, setFontLoaded] = useState(false);
   const [animatedSentence, setAnimatedSentence] = useState('');
   const [letterOpacity] = useState(new Animated.Value(1));
-  const [showText, setShowText] = useState(true); // State to control text rendering
-  const [highlightedIndex, setHighlightedIndex] = useState(0); // Track which sentence is highlighted
-  const [sentencesAnimated, setSentencesAnimated] = useState(false); // Track if sentences animation is triggered
-  const [sentenceReversed, setReverseSentence] = useState(false); // Store the reverse state
+  const [showText, setShowText] = useState(true);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [sentencesAnimated, setSentencesAnimated] = useState(false);
+  const [sentenceReversed, setReverseSentence] = useState(false);
+  const [showReverseAnimation, setShowReverseAnimation] = useState(false);
+
   const sentence = "  Over half of the population suffers from the diet related diseases...  ";
   const sentences = [
     "Get rid of acne",
@@ -24,11 +27,9 @@ export default function App() {
     "Get Stronger"
   ];
 
-  // Store animated values for each sentence
-  const sentenceColors = useRef(sentences.map(() => new Animated.Value(0))); // 0 for grey, 1 for white
-  const sentenceOpacities = useRef(sentences.map(() => new Animated.Value(1))); // Opacities for each sentence
+  const sentenceColors = useRef(sentences.map(() => new Animated.Value(0)));
+  const sentenceOpacities = useRef(sentences.map(() => new Animated.Value(1)));
 
-  // Function to trigger haptic feedback continuously
   const triggerHapticFeedback = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
   };
@@ -47,13 +48,11 @@ export default function App() {
   useEffect(() => {
     if (fontLoaded) {
       setAnimatedSentence('');
-
       let currentIndex = 0;
       const intervalId = setInterval(() => {
         if (currentIndex < sentence.length) {
           setAnimatedSentence((prev) => prev + sentence[currentIndex]);
 
-          // Trigger haptic feedback only for every 5th character
           if (currentIndex % 5 === 0) {
             triggerHapticFeedback();
           }
@@ -62,25 +61,22 @@ export default function App() {
         } else {
           clearInterval(intervalId);
 
-          // Fade out the text when animation completes
           Animated.timing(letterOpacity, {
             toValue: 0,
             duration: 500,
             useNativeDriver: true,
           }).start();
 
-          // After the first sentence finishes, trigger the second animation
           setTimeout(() => {
             setSentencesAnimated(true);
-          }, 1000); // Start sentence animations after a brief delay
+          }, 1000);
         }
       }, 100);
 
-      // Stop showing text after 9 seconds
       setTimeout(() => {
         clearInterval(intervalId);
-        setShowText(false); // Hide the text completely after 9 seconds
-      }, 9000); // 9 seconds duration
+        setShowText(false);
+      }, 9000);
     }
   }, [fontLoaded]);
 
@@ -92,15 +88,14 @@ export default function App() {
           if (sentenceIndex > 0) {
             Animated.timing(sentenceColors.current[sentenceIndex - 1], {
               toValue: 0,
-              duration: 300, // Short duration for resetting the previous sentence
+              duration: 300,
               useNativeDriver: false,
             }).start();
           }
 
-          // Animate the color of the current sentence to white
           Animated.timing(sentenceColors.current[sentenceIndex], {
             toValue: 1,
-            duration: 300, // 3 seconds for each sentence to highlight
+            duration: 300,
             useNativeDriver: false,
           }).start();
           triggerHapticFeedback();
@@ -109,13 +104,11 @@ export default function App() {
         } else {
           clearInterval(interval);
           setSentencesAnimated(false);
-          // Set reverse sentence state to true after animation
           setReverseSentence(true);
 
-          // After 1 second, reset reverse sentence state
           setTimeout(() => {
             setReverseSentence(false);
-          }, 1000); // 1 second delay
+          }, 1000);
         }
       }, 300);
     }
@@ -123,11 +116,9 @@ export default function App() {
 
   useEffect(() => {
     if (sentenceReversed) {
-      // Animate sentences disappearing from bottom to top
       let sentenceIndex = sentences.length - 1;
       const interval = setInterval(() => {
         if (sentenceIndex >= 0) {
-          // Fade out the sentence one by one
           Animated.timing(sentenceOpacities.current[sentenceIndex], {
             toValue: 0,
             duration: 100,
@@ -138,6 +129,7 @@ export default function App() {
           triggerHapticFeedback();
         } else {
           clearInterval(interval);
+          setShowReverseAnimation(true);
         }
       }, 100);
     }
@@ -197,7 +189,7 @@ export default function App() {
                     style={[
                       styles.sentencesText,
                       {
-                        opacity: sentenceOpacities.current[index], // Apply opacity animation
+                        opacity: sentenceOpacities.current[index],
                       },
                     ]}
                   >
@@ -208,6 +200,7 @@ export default function App() {
             })}
           </View>
         )}
+        {showReverseAnimation && <ReverseAnimation fontFamily="tilted-font" />}
       </LinearGradient>
     </>
   );
@@ -235,7 +228,7 @@ const styles = StyleSheet.create({
   },
   sentencesText: {
     fontSize: 52,
-    color: 'grey', // Default color
+    color: 'grey',
     marginBottom: 5,
     textAlign: 'left',
     fontFamily: 'tilted-font',
